@@ -1,5 +1,5 @@
 // Minimal offline-cache service worker for the Bloomer PWA shell.
-const CACHE = 'bloomer-v3';
+const CACHE = 'bloomer-v4';
 const ASSETS = [
   './',
   './index.html',
@@ -33,15 +33,16 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
+  // Network-first: an active install always gets the latest deploy without
+  // any cache-clearing gymnastics. Cache Storage is only a fallback for
+  // when there's no network at all — that's what "works offline" needs,
+  // not "serve whatever was cached first."
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      const network = fetch(event.request)
-        .then((res) => {
-          if (res.ok) caches.open(CACHE).then((cache) => cache.put(event.request, res.clone()));
-          return res;
-        })
-        .catch(() => cached);
-      return cached || network;
-    })
+    fetch(event.request)
+      .then((res) => {
+        if (res.ok) caches.open(CACHE).then((cache) => cache.put(event.request, res.clone()));
+        return res;
+      })
+      .catch(() => caches.match(event.request))
   );
 });
