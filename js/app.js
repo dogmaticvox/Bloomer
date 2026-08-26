@@ -13,6 +13,8 @@ const el = {
   typeRow: $('#type-row'),
   modifierRow: $('#modifier-row'),
   modeRow: $('#mode-row'),
+  slashGrid: $('#slash-grid'),
+  slashClear: $('#slash-clear'),
   dial: $('#voicing-dial'),
   dialNeedle: $('#dial-needle'),
   voicingValue: $('#voicing-value'),
@@ -45,6 +47,7 @@ const state = {
   type: 'major',
   modifiers: new Set(),
   voicing: 0,
+  slashRoot: null,
   performanceMode: 'block',
   tempo: 100,
   strumSpeed: 40,
@@ -67,7 +70,9 @@ function lerp(a, b, t) {
 
 function chordNameText(chordState) {
   const mods = [...chordState.modifiers].map((m) => MODIFIER_SYMBOL[m]).join('');
-  return `${NOTE_NAMES[chordState.root]} ${TYPE_NAMES[chordState.type]}${mods}`;
+  const hasSlash = chordState.slashRoot != null && chordState.slashRoot !== chordState.root;
+  const slash = hasSlash ? ` / ${NOTE_NAMES[chordState.slashRoot]}` : '';
+  return `${NOTE_NAMES[chordState.root]} ${TYPE_NAMES[chordState.type]}${mods}${slash}`;
 }
 
 function computeModeOpts() {
@@ -190,6 +195,43 @@ function updateChordUI() {
   el.chordName.textContent = chordNameText(state);
 }
 
+// -------------------------------------------------------------- slash bass
+
+function buildSlashGrid() {
+  el.slashGrid.innerHTML = '';
+  NOTE_NAMES.forEach((name, pc) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'slash-btn';
+    btn.textContent = name;
+    btn.setAttribute('role', 'radio');
+    btn.dataset.pc = String(pc);
+    btn.addEventListener('click', () => {
+      // Pressing the active note again clears the slash back to normal.
+      state.slashRoot = state.slashRoot === pc ? null : pc;
+      updateSlashUI();
+      updateChordUI();
+    });
+    el.slashGrid.appendChild(btn);
+  });
+}
+
+function updateSlashUI() {
+  el.slashGrid.querySelectorAll('.slash-btn').forEach((btn) => {
+    const active = Number(btn.dataset.pc) === state.slashRoot;
+    btn.classList.toggle('is-active', active);
+    btn.setAttribute('aria-checked', String(active));
+  });
+}
+
+function wireSlashControls() {
+  el.slashClear.addEventListener('click', () => {
+    state.slashRoot = null;
+    updateSlashUI();
+    updateChordUI();
+  });
+}
+
 // ---------------------------------------------------------- voicing dial
 
 function voicingSubText(value) {
@@ -302,6 +344,7 @@ function snapshotState() {
     type: state.type,
     modifiers: [...state.modifiers],
     voicing: state.voicing,
+    slashRoot: state.slashRoot,
     performanceMode: state.performanceMode,
   };
 }
@@ -428,13 +471,16 @@ function init() {
   buildTypeRow();
   buildModifierRow();
   buildModeRow();
+  buildSlashGrid();
   wireVoicingDial();
   wirePerformanceControls();
+  wireSlashControls();
   wireProgressionControls();
 
   updateKeyboardUI();
   updateChordUI();
   updateModeUI();
+  updateSlashUI();
   updateDialUI();
   renderProgression();
 

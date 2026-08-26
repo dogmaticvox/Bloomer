@@ -356,13 +356,21 @@ input[type="range"]::-moz-range-thumb {
 .key.is-active.key-white { background: rgba(0, 240, 255, 0.32); box-shadow: var(--glow-cyan); }
 .key.is-active.key-black { background: #124049; box-shadow: var(--glow-cyan); }
 
-/* ── Voicing dial ── */
+/* ── Voicing dial + Slash bass (side by side) ── */
 
-.voicing-dial-row { display: flex; align-items: center; gap: 20px; justify-content: center; }
+.dual-row { display: flex; gap: 14px; align-items: stretch; }
+.dual-row > .card { flex: 1 1 0; min-width: 0; }
+
+.voicing-dial-row {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
 
 .dial {
   position: relative;
-  width: 96px; height: 96px;
+  width: 76px; height: 76px;
   cursor: grab;
   touch-action: none;
 }
@@ -391,15 +399,46 @@ input[type="range"]::-moz-range-thumb {
   transform: translate(-50%, -100%) rotate(0deg);
 }
 
-.dial-readout { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-width: 96px; }
+.dial-readout { display: flex; flex-direction: column; align-items: center; gap: 2px; }
 
 .dial-value {
-  font-size: 30px; font-weight: 700; color: var(--cyan);
+  font-size: 24px; font-weight: 700; color: var(--cyan);
   font-variant-numeric: tabular-nums;
   text-shadow: 0 0 14px rgba(0, 240, 255, 0.6), 0 0 40px rgba(0, 240, 255, 0.2);
 }
 
-.dial-sub { font-size: 10px; letter-spacing: 0.1em; color: var(--ink-dim); }
+.dial-sub { font-size: 9.5px; letter-spacing: 0.08em; color: var(--ink-dim); text-align: center; }
+
+/* ── Slash bass grid ── */
+
+.slash-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+
+.slash-btn {
+  font-family: inherit;
+  font-size: 12px;
+  padding: 9px 4px;
+  border-radius: 8px;
+  border: 1px solid rgba(125, 138, 165, 0.35);
+  background: rgba(0, 0, 0, 0.2);
+  color: var(--ink-dim);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s;
+}
+
+.slash-btn:hover { border-color: rgba(255, 45, 149, 0.4); color: var(--ink); }
+.slash-btn:focus-visible { outline: 2px solid var(--magenta); outline-offset: 2px; }
+
+.slash-btn.is-active {
+  background: rgba(255, 45, 149, 0.16);
+  border-color: var(--magenta);
+  color: var(--magenta);
+  text-shadow: 0 0 8px rgba(255, 45, 149, 0.5);
+  box-shadow: inset 0 0 0 1px rgba(255, 45, 149, 0.25);
+}
 
 /* ── Progression list ── */
 

@@ -63,29 +63,39 @@
       </div>
     </section>
 
-    <!-- Voicing dial -->
-    <section class="card voicing-card">
-      <div class="card-header">
-        <span class="card-title">Voicing</span>
-        <button id="voicing-reset" class="btn btn-ghost btn-small">RESET</button>
-      </div>
-      <div class="voicing-dial-row">
-        <div id="voicing-dial" class="dial" role="slider" tabindex="0"
-             aria-label="Voicing dial — inverts and shifts register"
-             aria-valuemin="-12" aria-valuemax="12" aria-valuenow="0" aria-valuetext="0, root position">
-          <svg class="dial-ticks" viewBox="0 0 120 120" aria-hidden="true">
-            <circle cx="60" cy="60" r="52" fill="none" stroke="rgba(0,240,255,0.12)" stroke-width="1"/>
-          </svg>
-          <div class="dial-knob">
-            <div id="dial-needle" class="dial-needle"></div>
+    <!-- Voicing dial + Slash bass -->
+    <div class="dual-row">
+      <section class="card voicing-card">
+        <div class="card-header">
+          <span class="card-title">Voicing</span>
+          <button id="voicing-reset" class="btn btn-ghost btn-small">RESET</button>
+        </div>
+        <div class="voicing-dial-row">
+          <div id="voicing-dial" class="dial" role="slider" tabindex="0"
+               aria-label="Voicing dial — inverts and shifts register"
+               aria-valuemin="-12" aria-valuemax="12" aria-valuenow="0" aria-valuetext="0, root position">
+            <svg class="dial-ticks" viewBox="0 0 120 120" aria-hidden="true">
+              <circle cx="60" cy="60" r="52" fill="none" stroke="rgba(0,240,255,0.12)" stroke-width="1"/>
+            </svg>
+            <div class="dial-knob">
+              <div id="dial-needle" class="dial-needle"></div>
+            </div>
+          </div>
+          <div class="dial-readout">
+            <span id="voicing-value" class="dial-value">0</span>
+            <span id="voicing-sub" class="dial-sub">root position</span>
           </div>
         </div>
-        <div class="dial-readout">
-          <span id="voicing-value" class="dial-value">0</span>
-          <span id="voicing-sub" class="dial-sub">root position</span>
+      </section>
+
+      <section class="card slash-card">
+        <div class="card-header">
+          <span class="card-title">Slash</span>
+          <button id="slash-clear" class="btn btn-ghost btn-small">NONE</button>
         </div>
-      </div>
-    </section>
+        <div id="slash-grid" class="slash-grid" role="radiogroup" aria-label="Slash bass note"></div>
+      </section>
+    </div>
 
     <!-- Performance modes -->
     <section class="card perform-card">
