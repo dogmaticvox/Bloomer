@@ -3,13 +3,25 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { resolveChord, TYPE_INTERVALS } from '../js/chord-theory.js';
+import { resolveChord, TYPE_INTERVALS, CHORD_TYPES, EXTENDED_TYPES } from '../js/chord-theory.js';
 
 test('base triads match the spec table', () => {
   assert.deepEqual(resolveChord(0, 'major', []), [0, 4, 7]);
   assert.deepEqual(resolveChord(0, 'minor', []), [0, 3, 7]);
   assert.deepEqual(resolveChord(0, 'sus', []), [0, 5, 7]);
   assert.deepEqual(resolveChord(0, 'dim', []), [0, 3, 6]);
+});
+
+test('extended dominant-family types are complete formulas, not additive', () => {
+  assert.deepEqual(resolveChord(0, 'dom7', []), [0, 4, 7, 10]); // 1 3 5 b7
+  assert.deepEqual(resolveChord(0, 'add9', []), [0, 4, 7, 14]); // 1 3 5 9, no 7th
+  assert.deepEqual(resolveChord(0, 'dom7sharp9', []), [0, 4, 10, 15]); // 1 3 b7 #9, no 5
+  assert.deepEqual(resolveChord(0, 'dom7sharp11', []), [0, 4, 10, 18]); // 1 3 b7 #11, no 5
+});
+
+test('extended types still compose with the additive modifiers', () => {
+  // dom7 (1,3,5,b7) + 9 modifier -> proper 9 chord, no redundant implied m7
+  assert.deepEqual(resolveChord(0, 'dom7', ['9']), [0, 4, 7, 10, 14]);
 });
 
 test('modifiers add their interval on top of the triad', () => {
@@ -58,6 +70,8 @@ test('unknown chord type throws', () => {
   assert.throws(() => resolveChord(0, 'blorp', []));
 });
 
-test('all four types are covered by TYPE_INTERVALS', () => {
-  assert.deepEqual(Object.keys(TYPE_INTERVALS).sort(), ['dim', 'major', 'minor', 'sus']);
+test('every CHORD_TYPES and EXTENDED_TYPES entry has a TYPE_INTERVALS formula', () => {
+  for (const type of [...CHORD_TYPES, ...EXTENDED_TYPES]) {
+    assert.ok(Array.isArray(TYPE_INTERVALS[type]), `missing TYPE_INTERVALS for "${type}"`);
+  }
 });

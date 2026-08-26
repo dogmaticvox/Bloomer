@@ -13,13 +13,13 @@ export function chordStateToNotes(state) {
   const intervals = resolveChord(state.root, state.type, state.modifiers);
   const base = baseNotesForRoot(state.root, intervals);
 
-  // Slash chord: substitute the root tone (always base[0] — intervals are
-  // sorted ascending and the root's own interval is always 0) with a bass
-  // note of the chosen pitch class, placed an octave below so it stays the
-  // lowest note regardless of the original root's register.
-  if (state.slashRoot != null && state.slashRoot !== state.root) {
-    base[0] = MIDI_C4 - 12 + state.slashRoot;
-  }
+  // Every chord gets a bass note one octave below its root — a slash pick
+  // substitutes that bass note's pitch class instead of the root's, still
+  // an octave below the main chord. Always strictly below base[0] (which
+  // sits at MIDI_C4 + root, octave 4): the bass note lives in octave 3
+  // (MIDI_C4 - 12 + pitch class, i.e. 48-59), below base[0]'s 60-71 range.
+  const bassPitchClass = state.slashRoot != null ? state.slashRoot : state.root;
+  const bassNote = MIDI_C4 - 12 + bassPitchClass;
 
-  return computeVoicing(base, state.voicing);
+  return computeVoicing([bassNote, ...base], state.voicing);
 }

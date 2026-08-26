@@ -1,4 +1,4 @@
-import { NOTE_NAMES, CHORD_TYPES, MODIFIERS } from './chord-theory.js';
+import { NOTE_NAMES, CHORD_TYPES, EXTENDED_TYPES, MODIFIERS } from './chord-theory.js';
 import { chordStateToNotes } from './chord-state.js';
 import { PERFORMANCE_MODES } from './performance-modes.js';
 import * as audioEngine from './audio-engine.js';
@@ -11,6 +11,7 @@ const el = {
   rootLabel: $('#root-label'),
   chordName: $('#chord-name'),
   typeRow: $('#type-row'),
+  extendedTypeRow: $('#extended-type-row'),
   modifierRow: $('#modifier-row'),
   modeRow: $('#mode-row'),
   slashGrid: $('#slash-grid'),
@@ -35,8 +36,14 @@ const el = {
   progressionHint: $('#progression-hint'),
 };
 
-const TYPE_LABELS = { major: 'MAJ', minor: 'MIN', sus: 'SUS', dim: 'DIM' };
-const TYPE_NAMES = { major: 'MAJOR', minor: 'MINOR', sus: 'SUS', dim: 'DIM' };
+const TYPE_LABELS = {
+  major: 'MAJ', minor: 'MIN', sus: 'SUS', dim: 'DIM',
+  dom7: '7', add9: 'ADD9', dom7sharp9: '7♯9', dom7sharp11: '7♯11',
+};
+const TYPE_NAMES = {
+  major: 'MAJOR', minor: 'MINOR', sus: 'SUS', dim: 'DIM',
+  dom7: '7', add9: 'ADD9', dom7sharp9: '7♯9', dom7sharp11: '7♯11',
+};
 const MODIFIER_LABELS = { '6': '6', m7: 'm7', maj7: 'Maj7', '9': '9' };
 const MODIFIER_SYMBOL = { '6': ' 6', m7: ' 7', maj7: ' Δ7', '9': ' 9' };
 const MODE_LABELS = { block: 'BLOCK', altBass: 'ALT BASS', strum: 'STRUM', arp: 'ARP' };
@@ -142,9 +149,9 @@ function updateKeyboardUI() {
 
 // ------------------------------------------------------------ chord UI
 
-function buildTypeRow() {
-  el.typeRow.innerHTML = '';
-  for (const type of CHORD_TYPES) {
+function fillTypeRow(container, types) {
+  container.innerHTML = '';
+  for (const type of types) {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'seg-btn';
@@ -155,8 +162,16 @@ function buildTypeRow() {
       state.type = type;
       updateChordUI();
     });
-    el.typeRow.appendChild(btn);
+    container.appendChild(btn);
   }
+}
+
+// Type and Extended-type are one logical single-select group split across
+// two rows for layout — the extended (dominant-family) formulas are
+// complete chord recipes, mutually exclusive with major/minor/sus/dim.
+function buildTypeRow() {
+  fillTypeRow(el.typeRow, CHORD_TYPES);
+  fillTypeRow(el.extendedTypeRow, EXTENDED_TYPES);
 }
 
 function buildModifierRow() {
@@ -184,10 +199,12 @@ function buildModifierRow() {
 }
 
 function updateChordUI() {
-  el.typeRow.querySelectorAll('.seg-btn').forEach((btn) => {
-    const active = btn.dataset.type === state.type;
-    btn.classList.toggle('is-active', active);
-    btn.setAttribute('aria-checked', String(active));
+  [el.typeRow, el.extendedTypeRow].forEach((row) => {
+    row.querySelectorAll('.seg-btn').forEach((btn) => {
+      const active = btn.dataset.type === state.type;
+      btn.classList.toggle('is-active', active);
+      btn.setAttribute('aria-checked', String(active));
+    });
   });
   el.modifierRow.querySelectorAll('.seg-btn').forEach((btn) => {
     btn.classList.toggle('is-active', state.modifiers.has(btn.dataset.mod));

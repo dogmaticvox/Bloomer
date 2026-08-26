@@ -6,11 +6,23 @@ export const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A',
 
 export const CHORD_TYPES = ['major', 'minor', 'sus', 'dim'];
 
+// Extended dominant-family formulas. Unlike the additive modifiers below,
+// two of these (dom7sharp9, dom7sharp11) omit the 5th and all of them
+// restate the 3rd as major — they're complete chord recipes, not tones
+// added on top of whatever triad is selected. So they live alongside
+// CHORD_TYPES as alternate `type` values (mutually exclusive with
+// major/minor/sus/dim) rather than in MODIFIERS.
+export const EXTENDED_TYPES = ['dom7', 'add9', 'dom7sharp9', 'dom7sharp11'];
+
 export const TYPE_INTERVALS = {
   major: [0, 4, 7],
   minor: [0, 3, 7],
   sus: [0, 5, 7], // sus4 (see build doc §7 — sus2 not implemented)
   dim: [0, 3, 6],
+  dom7: [0, 4, 7, 10], // 1, 3, 5, b7
+  add9: [0, 4, 7, 14], // 1, 3, 5, 9 (no 7th)
+  dom7sharp9: [0, 4, 10, 15], // 1, 3, b7, #9 — 5th omitted
+  dom7sharp11: [0, 4, 10, 18], // 1, 3, b7, #11 — 5th omitted
 };
 
 export const MODIFIERS = ['6', 'm7', 'maj7', '9'];
@@ -28,7 +40,7 @@ export const MODIFIER_INTERVALS = {
  * @param {number} root - pitch class 0-11 (unused by the resolver itself,
  *   kept in the signature so callers can pass a full chord-state shape;
  *   the returned offsets are root-relative regardless of root's value).
- * @param {"major"|"minor"|"sus"|"dim"} type
+ * @param {"major"|"minor"|"sus"|"dim"|"dom7"|"add9"|"dom7sharp9"|"dom7sharp11"} type
  * @param {Iterable<"6"|"m7"|"maj7"|"9">} modifiers
  * @returns {number[]} ascending, deduplicated (mod 12) semitone offsets
  */

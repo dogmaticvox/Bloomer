@@ -12,10 +12,14 @@ layout, same no-build-step plumbing.
 
 **Features**
 
-- 🎹 **Root keyboard** — single octave, 12 keys, press-and-hold to sound a chord
-- 🎼 **Chord type** — Major, Minor, Sus, Diminished (single-select)
+- 🎹 **Root keyboard** — single octave, 12 keys, press-and-hold to sound a chord —
+  every chord sounds with an extra bass note one octave below the root
+- 🎼 **Chord type** — Major, Minor, Sus, Diminished, plus four dominant-family
+  formulas (7, add9, 7♯9, 7♯11) — single-select across both rows
 - ➕ **Modifiers** — 6, m7, Maj7, 9 — stack freely; a bare "9" implies m7 underneath it
   automatically, standard jazz-convention style
+- 🎸 **Slash chords** — a 12-note grid substitutes any note for the bass, for any
+  chord/bass combination
 - 🎛️ **Voicing dial** — inverts the chord tone by tone; a full cycle naturally lands
   you a register up or down
 - 🥁 **Performance modes** — Block, Alt bass/chord, Strum, Arpeggiate (up / down / up-down)
@@ -51,11 +55,12 @@ python3 -m http.server 8080
 # → http://localhost:8080
 ```
 
-The chord theory engine, voicing dial and performance-mode planner are pure ES
-modules with no audio or DOM dependency, so they're fully testable without a browser:
+The chord theory engine, voicing dial, performance-mode planner and chord-state
+pipeline are pure ES modules with no audio or DOM dependency, so they're fully
+testable without a browser:
 
 ```sh
-node --test test/chord-theory.test.mjs test/voicing.test.mjs test/performance-modes.test.mjs
+node --test test/chord-theory.test.mjs test/voicing.test.mjs test/performance-modes.test.mjs test/chord-state.test.mjs
 ```
 
 ## How it works
@@ -63,7 +68,14 @@ node --test test/chord-theory.test.mjs test/voicing.test.mjs test/performance-mo
 - **Chord resolution** (`js/chord-theory.js`) is a single pure function,
   `resolveChord(root, type, modifiers)`, that starts from a base triad and adds each
   modifier's interval on top, de-duplicating by pitch class. It's root-relative and
-  has no notion of octave — that's the voicing engine's job.
+  has no notion of octave — that's the voicing engine's job. Four dominant-family
+  formulas (7, add9, 7♯9, 7♯11) live alongside Major/Minor/Sus/Dim as alternate
+  `type` values rather than modifiers — two of them drop the 5th outright, which
+  only makes sense as a complete recipe, not something layered on top of a triad.
+- **Chord state → notes** (`js/chord-state.js`) always adds a bass note one octave
+  below the root; a slash pick (`js/chord-state.js`, wired from the Slash grid in
+  the UI) substitutes that bass note's pitch class instead, still an octave down —
+  giving any chord/bass combination without touching the upper voicing.
 - **Voicing** (`js/voicing.js`) walks a chord through inversions one dial-step at a
   time: each step moves whichever note is currently most extreme (lowest, for a
   step up) into the opposite octave. A full inversion cycle is just that same rule
