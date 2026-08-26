@@ -1,0 +1,29 @@
+/* Bloomer design tokens — adopted verbatim from the Clipper / Shifter /
+   CipherDeck shared theme so the whole suite renders from the same
+   palette, type voice and glow language. */
+:root {
+  /* surfaces */
+  --bg: #0a0e17;
+  --bg-2: #0d1322;
+
+  /* accents (suite palette — no additions) */
+  --cyan: #00f0ff;
+  --magenta: #ff2d95;
+  --violet: #7b5cff;
+
+  /* text */
+  --ink: #e8f4ff;
+  --ink-dim: #7d8aa5;
+
+  /* card */
+  --card-bg: rgba(255, 255, 255, 0.03);
+  --card-border: rgba(0, 240, 255, 0.16);
+
+  /* glow */
+  --glow-cyan: 0 0 12px rgba(0, 240, 255, 0.45);
+  --glow-magenta: 0 0 12px rgba(255, 45, 149, 0.45);
+  --glow-violet: 0 0 12px rgba(123, 92, 255, 0.45);
+
+  /* type */
+  --font: "SF Mono", "Cascadia Code", ui-monospace, "Segoe UI Mono", Menlo, Consolas, monospace;
+}

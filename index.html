@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0a0e17">
+  <meta name="description" content="A chord-generating instrument — pick a root, stack a chord type and modifiers, spin the voicing dial, and loop a progression. Runs offline, right on your phone.">
+  <title>Bloomer</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon-192.png" type="image/png">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="stylesheet" href="css/tokens.css">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div class="bg-grid" aria-hidden="true"></div>
+
+  <header class="app-header">
+    <svg class="logo" viewBox="0 0 48 48" aria-hidden="true">
+      <defs>
+        <linearGradient id="logoGrad" gradientUnits="userSpaceOnUse" x1="4" y1="4" x2="44" y2="44">
+          <stop offset="0" stop-color="#00f0ff"/>
+          <stop offset="0.55" stop-color="#7b5cff"/>
+          <stop offset="1" stop-color="#ff2d95"/>
+        </linearGradient>
+      </defs>
+      <g fill="none" stroke="url(#logoGrad)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M24 44V22"/>
+        <path d="M24 22c0-8.5 6-14 14-14 0 8.5-6 14-14 14z"/>
+        <path d="M24 22c0-8.5-6-14-14-14 0 8.5 6 14 14 14z"/>
+        <path d="M24 30c5.8 0 10.4-3.8 10.4-3.8" opacity="0.6"/>
+        <path d="M24 30c-5.8 0-10.4-3.8-10.4-3.8" opacity="0.6"/>
+      </g>
+      <circle cx="24" cy="22" r="3.2" fill="url(#logoGrad)"/>
+    </svg>
+    <h1>BLOOMER</h1>
+    <p class="tagline">ROOT · CHORD · VOICE · LOOP</p>
+  </header>
+
+  <main>
+    <!-- Root keyboard -->
+    <section class="card keyboard-card">
+      <div class="card-header">
+        <span class="card-title">Root</span>
+        <span id="root-label" class="meta-row">C</span>
+      </div>
+      <div id="keyboard" class="keyboard" role="group" aria-label="Root note keyboard"></div>
+    </section>
+
+    <!-- Chord type + modifiers -->
+    <section class="card chord-card">
+      <div class="card-header">
+        <span class="card-title">Chord</span>
+        <span id="chord-name" class="meta-row">C MAJOR</span>
+      </div>
+      <div class="field">
+        <label class="field-label">Type</label>
+        <div id="type-row" class="seg-row" role="radiogroup" aria-label="Chord type"></div>
+      </div>
+      <div class="field">
+        <label class="field-label">Modifiers</label>
+        <div id="modifier-row" class="seg-row" role="group" aria-label="Chord modifiers"></div>
+      </div>
+    </section>
+
+    <!-- Voicing dial -->
+    <section class="card voicing-card">
+      <div class="card-header">
+        <span class="card-title">Voicing</span>
+        <button id="voicing-reset" class="btn btn-ghost btn-small">RESET</button>
+      </div>
+      <div class="voicing-dial-row">
+        <div id="voicing-dial" class="dial" role="slider" tabindex="0"
+             aria-label="Voicing dial — inverts and shifts register"
+             aria-valuemin="-12" aria-valuemax="12" aria-valuenow="0" aria-valuetext="0, root position">
+          <svg class="dial-ticks" viewBox="0 0 120 120" aria-hidden="true">
+            <circle cx="60" cy="60" r="52" fill="none" stroke="rgba(0,240,255,0.12)" stroke-width="1"/>
+          </svg>
+          <div class="dial-knob">
+            <div id="dial-needle" class="dial-needle"></div>
+          </div>
+        </div>
+        <div class="dial-readout">
+          <span id="voicing-value" class="dial-value">0</span>
+          <span id="voicing-sub" class="dial-sub">root position</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Performance modes -->
+    <section class="card perform-card">
+      <div class="card-header"><span class="card-title">Performance</span></div>
+      <div id="mode-row" class="seg-row" role="radiogroup" aria-label="Performance mode"></div>
+
+      <div class="control-row">
+        <span class="switch-label">TEMPO</span>
+        <div class="slider-group">
+          <input type="range" id="tempo" min="50" max="200" step="1" value="100" aria-label="Tempo in BPM">
+          <span id="tempo-val" class="slider-val">100 BPM</span>
+        </div>
+      </div>
+
+      <div id="strum-row" class="control-row" hidden>
+        <span class="switch-label">STRUM</span>
+        <div class="slider-group">
+          <input type="range" id="strum-speed" min="0" max="100" step="1" value="40" aria-label="Strum speed">
+          <span id="strum-speed-val" class="slider-val">40%</span>
+        </div>
+      </div>
+
+      <div id="arp-row" class="control-row arp-row" hidden>
+        <span class="switch-label">ARP</span>
+        <div class="format-picker" role="radiogroup" aria-label="Arp clock division">
+          <button class="format-btn active" data-division="8n" role="radio" aria-checked="true">1/8</button>
+          <button class="format-btn" data-division="16n" role="radio" aria-checked="false">1/16</button>
+        </div>
+        <div class="format-picker" role="radiogroup" aria-label="Arp note order">
+          <button class="format-btn active" data-order="up" role="radio" aria-checked="true">UP</button>
+          <button class="format-btn" data-order="down" role="radio" aria-checked="false">DOWN</button>
+          <button class="format-btn" data-order="upDown" role="radio" aria-checked="false">UP/DN</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Progression -->
+    <section class="card progression-card">
+      <div class="card-header">
+        <span class="card-title">Progression</span>
+        <span id="progression-count" class="meta-row">0 chords</span>
+      </div>
+      <div class="btn-row">
+        <button id="rec-btn" class="btn btn-danger" aria-pressed="false">● REC</button>
+        <button id="play-prog-btn" class="btn btn-outline" disabled>▸ PLAY</button>
+        <label class="switch">
+          <input type="checkbox" id="loop-toggle">
+          <span class="switch-track" aria-hidden="true"></span>
+          <span class="switch-label">LOOP</span>
+        </label>
+        <button id="clear-prog-btn" class="btn btn-ghost" disabled>CLEAR</button>
+      </div>
+      <ul id="progression-list" class="progression-list"></ul>
+      <p id="progression-hint" class="progression-hint">Press REC, then play chords on the keyboard — each one is captured when you let go.</p>
+    </section>
+  </main>
+
+  <footer class="app-footer">runs 100% on your device · works offline</footer>
+
+  <script src="js/vendor/tone.js"></script>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
