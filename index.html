@@ -149,8 +149,24 @@
         </label>
         <button id="clear-prog-btn" class="btn btn-ghost" disabled>CLEAR</button>
       </div>
+      <div class="control-row">
+        <span class="switch-label">SPEED</span>
+        <div class="slider-group">
+          <input type="range" id="speed" min="25" max="200" step="5" value="100" aria-label="Playback speed">
+          <span id="speed-val" class="slider-val">100%</span>
+        </div>
+      </div>
       <ul id="progression-list" class="progression-list"></ul>
+      <div id="chord-editor" class="chord-editor" hidden>
+        <span id="chord-editor-name" class="chord-editor-name"></span>
+        <div class="chord-editor-controls" role="group" aria-label="Chord length">
+          <button id="len-down" class="btn btn-ghost btn-small" aria-label="Shorter by half a beat">−</button>
+          <span id="len-val" class="chord-editor-val" aria-live="polite"></span>
+          <button id="len-up" class="btn btn-ghost btn-small" aria-label="Longer by half a beat">+</button>
+        </div>
+      </div>
       <p id="progression-hint" class="progression-hint">Press REC, then play chords on the keyboard — each one is captured when you let go.</p>
+      <p id="progression-tip" class="progression-hint" hidden>Tap a chord to change how long it lasts. SPEED scales the whole progression.</p>
     </section>
   </main>
 
