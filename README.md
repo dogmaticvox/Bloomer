@@ -27,6 +27,9 @@ layout, same no-build-step plumbing.
   performance mode, and how long you held it) into a progression
 - 🔁 **Progression playback** — replays each chord through the exact same
   resolve → voice → performance-mode pipeline used live, with an optional loop
+- ⏩ **Speed & chord length** — a SPEED slider (25–200%) scales the whole
+  progression, strums and arps included; tap any chord to lengthen or shorten
+  it in half-beat steps
 - 📴 **Offline-first** — installs to your home screen and works with no connection
 
 ## Install on your phone
@@ -44,7 +47,10 @@ Press and hold a root key to sound a chord built from the current type + modifie
 voiced by the dial, and played through the selected performance mode. Press **REC**,
 then play a few chords — each one is captured the moment you let go, with a chip
 appended to the progression list (✕ to drop a mistake). **PLAY** replays the whole
-thing; **LOOP** repeats it.
+thing; **LOOP** repeats it. Tap a chord in the list to open its length editor
+(−/+ snap it onto a half-beat grid at the tempo it was recorded at), and use
+**SPEED** to play the whole progression slower or faster — both take effect on
+the next chord, even mid-loop.
 
 ## Local development
 
@@ -60,7 +66,7 @@ pipeline are pure ES modules with no audio or DOM dependency, so they're fully
 testable without a browser:
 
 ```sh
-node --test test/chord-theory.test.mjs test/voicing.test.mjs test/performance-modes.test.mjs test/chord-state.test.mjs
+node --test test/*.test.mjs
 ```
 
 ## How it works
@@ -85,10 +91,14 @@ node --test test/chord-theory.test.mjs test/voicing.test.mjs test/performance-mo
   schedule — a list of note onsets for Block/Alt-bass/Strum, or an ordered,
   repeating note cycle for Arp — as a pure function with no timing side effects.
 - **Audio** runs on [Tone.js](https://tonejs.github.io/) (vendored at
-  `js/vendor/tone.js`), with `Tone.PolySynth` as the voice and `Tone.Transport` as
-  the single shared clock for both live play and recorded playback.
+  `js/vendor/tone.js`), with `Tone.PolySynth` as the voice. Every time in the app
+  is AudioContext time (`Tone.now()`) — one clock for live play, arps and
+  recorded playback, with no Transport position to keep in sync. Audio is
+  unlocked on the gestures phones actually accept (a tap's release, not its
+  press), and a press that lands before audio is running is held until it is.
 - **Recording** (`js/progression.js`) snapshots the full chord state plus how long it
-  was held. Playback re-runs every recorded chord through the exact same
+  was held (and the tempo, so lengths can be edited in beats). Playback schedules
+  one chord at a time, reading the list and speed afresh each step. Playback re-runs every recorded chord through the exact same
   trigger/release functions used live, so a looped progression sounds identical to
   how it was played.
 - `sw.js` precaches every asset, Tone.js included, so the installed app works fully

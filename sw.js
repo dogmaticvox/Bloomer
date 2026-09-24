@@ -1,5 +1,5 @@
 // Minimal offline-cache service worker for the Bloomer PWA shell.
-const CACHE = 'bloomer-v4';
+const CACHE = 'bloomer-v5';
 const ASSETS = [
   './',
   './index.html',

@@ -2,7 +2,9 @@ import { NOTE_NAMES, CHORD_TYPES, EXTENDED_TYPES, MODIFIERS } from './chord-theo
 import { chordStateToNotes } from './chord-state.js';
 import { PERFORMANCE_MODES } from './performance-modes.js';
 import * as audioEngine from './audio-engine.js';
-import { scheduleProgression } from './progression.js';
+import {
+  scheduleProgression, durationToBeats, beatsToDuration, stepBeats, MIN_SPEED, MAX_SPEED,
+} from './progression.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 
@@ -34,6 +36,14 @@ const el = {
   progressionList: $('#progression-list'),
   progressionCount: $('#progression-count'),
   progressionHint: $('#progression-hint'),
+  progressionTip: $('#progression-tip'),
+  speed: $('#speed'),
+  speedVal: $('#speed-val'),
+  chordEditor: $('#chord-editor'),
+  chordEditorName: $('#chord-editor-name'),
+  lenDown: $('#len-down'),
+  lenUp: $('#len-up'),
+  lenVal: $('#len-val'),
 };
 
 const TYPE_LABELS = {
@@ -65,7 +75,14 @@ const state = {
 let progression = [];
 let recording = false;
 let activeVoice = null; // { root, handle, startedAt, snapshot, modeOpts }
+// A press made before audio is running (on a phone, the very first touch —
+// pointerdown can't unlock audio there, only the lift can) waits here until
+// audio comes up, instead of racing the release.
+let pendingPress = null; // { root, startedAt, releasedAt }
 let playback = null; // { stop() } while progression is playing
+let playbackSpeed = 1; // multiplier: 0.5 = half speed, 2 = double
+let selectedIndex = null; // progression chip whose length is being edited
+let playingIndex = null; // progression chip currently sounding
 
 function clamp(v, min, max) {
   return Math.min(max, Math.max(min, v));
@@ -136,13 +153,16 @@ function buildKeyboard() {
     key.addEventListener('pointerup', () => releaseKey(pc));
     key.addEventListener('pointercancel', () => releaseKey(pc));
   });
+  // Android fires a long-press context menu on a held key otherwise.
+  el.keyboard.addEventListener('contextmenu', (e) => e.preventDefault());
 }
 
 function updateKeyboardUI() {
+  const held = pendingPress && pendingPress.releasedAt === null ? pendingPress : activeVoice;
   el.keyboard.querySelectorAll('.key').forEach((key) => {
     const pc = Number(key.dataset.note);
     key.classList.toggle('is-root', pc === state.root);
-    key.classList.toggle('is-active', activeVoice != null && pc === activeVoice.root);
+    key.classList.toggle('is-active', held != null && pc === held.root);
   });
   el.rootLabel.textContent = NOTE_NAMES[state.root];
 }
@@ -363,38 +383,70 @@ function snapshotState() {
     voicing: state.voicing,
     slashRoot: state.slashRoot,
     performanceMode: state.performanceMode,
+    tempo: state.tempo,
   };
 }
 
-async function pressKey(root) {
-  await audioEngine.ensureAudioStarted();
+function pressKey(root) {
   if (activeVoice) finishVoice(activeVoice, false);
+  pendingPress = null;
 
   state.root = root;
   updateChordUI();
-  updateKeyboardUI();
 
   const snapshot = snapshotState();
   const modeOpts = computeModeOpts();
-  const notes = chordStateToNotes(snapshot);
-  const t = audioEngine.now();
-  const handle = audioEngine.triggerVoice(notes, snapshot.performanceMode, modeOpts, t);
+  const startedAt = performance.now();
 
-  activeVoice = { root, handle, startedAt: performance.now(), snapshot, modeOpts };
+  if (audioEngine.isReady()) {
+    startVoice(root, snapshot, modeOpts, startedAt);
+    return;
+  }
+
+  const press = { root, startedAt, releasedAt: null };
+  pendingPress = press;
+  updateKeyboardUI();
+  audioEngine.ensureAudioStarted().then(() => {
+    if (pendingPress !== press) return; // another key took over meanwhile
+    pendingPress = null;
+    startVoice(root, snapshot, modeOpts, startedAt);
+    if (press.releasedAt !== null) {
+      // Already lifted: still sound it, for as long as it was actually held.
+      const heldSec = Math.max((press.releasedAt - startedAt) / 1000, audioEngine.MIN_HOLD_SEC);
+      finishVoice(activeVoice, true, heldSec);
+      activeVoice = null;
+      updateKeyboardUI();
+    }
+  });
 }
 
-function finishVoice(voice, capture) {
-  const t = audioEngine.now();
-  audioEngine.releaseVoice(voice.handle, t);
+function startVoice(root, snapshot, modeOpts, startedAt) {
+  const notes = chordStateToNotes(snapshot);
+  const handle = audioEngine.triggerVoice(notes, snapshot.performanceMode, modeOpts, audioEngine.now());
+  activeVoice = { root, handle, startedAt, snapshot, modeOpts };
+  updateKeyboardUI();
+}
+
+// `heldSec` given = the chord was lifted already; let it ring that long.
+function finishVoice(voice, capture, heldSec) {
+  const releaseLater = heldSec !== undefined;
+  const duration = Math.max(
+    releaseLater ? heldSec : (performance.now() - voice.startedAt) / 1000,
+    audioEngine.MIN_HOLD_SEC,
+  );
+  audioEngine.releaseVoice(voice.handle, audioEngine.now() + (releaseLater ? duration : 0));
   if (capture && recording) {
-    const heldSec = (performance.now() - voice.startedAt) / 1000;
-    const duration = Math.max(heldSec, audioEngine.MIN_HOLD_SEC);
     progression.push({ ...voice.snapshot, modeOpts: voice.modeOpts, duration });
     renderProgression();
   }
 }
 
 function releaseKey(root) {
+  if (pendingPress && pendingPress.root === root) {
+    if (pendingPress.releasedAt === null) pendingPress.releasedAt = performance.now();
+    updateKeyboardUI();
+    return;
+  }
   if (!activeVoice || activeVoice.root !== root) return;
   finishVoice(activeVoice, true);
   activeVoice = null;
@@ -403,16 +455,35 @@ function releaseKey(root) {
 
 // --------------------------------------------------------- progression
 
+function formatBeats(beats) {
+  return String(Math.round(beats * 100) / 100);
+}
+
 function renderProgression() {
+  if (selectedIndex !== null && selectedIndex >= progression.length) selectedIndex = null;
   el.progressionList.innerHTML = '';
   for (const [index, item] of progression.entries()) {
     const chip = document.createElement('li');
     chip.className = 'chord-chip';
+    chip.classList.toggle('is-selected', index === selectedIndex);
+    chip.classList.toggle('is-playing', index === playingIndex);
     chip.dataset.index = String(index);
 
-    const text = document.createElement('span');
-    text.textContent = chordNameText(item) + (MODE_ABBR[item.performanceMode] ? ` · ${MODE_ABBR[item.performanceMode]}` : '');
-    chip.appendChild(text);
+    const main = document.createElement('button');
+    main.type = 'button';
+    main.className = 'chord-chip-main';
+    main.setAttribute('aria-pressed', String(index === selectedIndex));
+    const name = document.createElement('span');
+    name.textContent = chordNameText(item) + (MODE_ABBR[item.performanceMode] ? ` · ${MODE_ABBR[item.performanceMode]}` : '');
+    const len = document.createElement('span');
+    len.className = 'chord-chip-len';
+    len.textContent = `${formatBeats(durationToBeats(item))} bt`;
+    main.append(name, len);
+    main.addEventListener('click', () => {
+      selectedIndex = selectedIndex === index ? null : index;
+      renderProgression();
+    });
+    chip.appendChild(main);
 
     const removeBtn = document.createElement('button');
     removeBtn.type = 'button';
@@ -421,6 +492,8 @@ function renderProgression() {
     removeBtn.textContent = '✕';
     removeBtn.addEventListener('click', () => {
       progression.splice(index, 1);
+      if (selectedIndex === index) selectedIndex = null;
+      else if (selectedIndex !== null && selectedIndex > index) selectedIndex--;
       renderProgression();
     });
     chip.appendChild(removeBtn);
@@ -429,12 +502,31 @@ function renderProgression() {
   }
 
   el.progressionCount.textContent = `${progression.length} chord${progression.length === 1 ? '' : 's'}`;
-  el.playProgBtn.disabled = progression.length === 0;
+  el.playProgBtn.disabled = progression.length === 0 && !playback;
   el.clearProgBtn.disabled = progression.length === 0;
   el.progressionHint.hidden = progression.length > 0;
+  el.progressionTip.hidden = progression.length === 0 || selectedIndex !== null;
+  renderChordEditor();
+}
+
+function renderChordEditor() {
+  const item = selectedIndex !== null ? progression[selectedIndex] : null;
+  el.chordEditor.hidden = !item;
+  if (!item) return;
+  const beats = durationToBeats(item);
+  el.chordEditorName.textContent = chordNameText(item);
+  el.lenVal.textContent = `${formatBeats(beats)} beat${beats === 1 ? '' : 's'} · ${(item.duration / playbackSpeed).toFixed(2)}s`;
+}
+
+function nudgeSelectedLength(direction) {
+  const item = progression[selectedIndex];
+  if (!item) return;
+  item.duration = beatsToDuration(stepBeats(durationToBeats(item), direction), item.tempo);
+  renderProgression();
 }
 
 function highlightChip(index) {
+  playingIndex = index;
   el.progressionList.querySelectorAll('.chord-chip').forEach((chip) => {
     chip.classList.toggle('is-playing', Number(chip.dataset.index) === index);
   });
@@ -446,7 +538,8 @@ function stopPlayback() {
     playback = null;
   }
   el.playProgBtn.textContent = '▸ PLAY';
-  el.progressionList.querySelectorAll('.chord-chip').forEach((chip) => chip.classList.remove('is-playing'));
+  el.playProgBtn.disabled = progression.length === 0;
+  highlightChip(null);
 }
 
 function togglePlayback() {
@@ -454,8 +547,9 @@ function togglePlayback() {
     stopPlayback();
     return;
   }
-  playback = scheduleProgression(progression, {
-    loop: el.loopToggle.checked,
+  playback = scheduleProgression(() => progression, {
+    loop: () => el.loopToggle.checked,
+    speed: () => playbackSpeed,
     onStep: highlightChip,
     onDone: stopPlayback,
   });
@@ -463,8 +557,8 @@ function togglePlayback() {
 }
 
 function wireProgressionControls() {
-  el.recBtn.addEventListener('click', async () => {
-    await audioEngine.ensureAudioStarted();
+  el.recBtn.addEventListener('click', () => {
+    audioEngine.ensureAudioStarted();
     recording = !recording;
     el.recBtn.setAttribute('aria-pressed', String(recording));
   });
@@ -477,8 +571,18 @@ function wireProgressionControls() {
   el.clearProgBtn.addEventListener('click', () => {
     stopPlayback();
     progression = [];
+    selectedIndex = null;
     renderProgression();
   });
+
+  el.speed.addEventListener('input', () => {
+    playbackSpeed = clamp(Number(el.speed.value) / 100, MIN_SPEED, MAX_SPEED);
+    el.speedVal.textContent = `${el.speed.value}%`;
+    renderChordEditor();
+  });
+
+  el.lenDown.addEventListener('click', () => nudgeSelectedLength(-1));
+  el.lenUp.addEventListener('click', () => nudgeSelectedLength(1));
 }
 
 // ------------------------------------------------------------------ init
@@ -500,6 +604,7 @@ function init() {
   updateSlashUI();
   updateDialUI();
   renderProgression();
+  audioEngine.unlockOnGesture();
 
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
